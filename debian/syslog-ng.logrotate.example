@@ -113,7 +113,7 @@
    compress
 }
 
-/var/log/syslog.log {
+/var/log/syslog {
    rotate 7
    daily
    compress

@@ -15,7 +15,7 @@ options { long_hostnames(off); sync(0); use_dns(no);
 # Logs may come from unix stream, but not from another machine.
 #
 source src { unix-dgram("/dev/log"); internal();
-       	     file("/proc/kmsg" log_prefix("kernel: "));
+       	     file("/proc/kmsg" log_prefix("kernel"));
 };
 
 # If you wish to get logs from remote machine you should uncomment
@@ -34,7 +34,7 @@ destination daemon { file("/var/log/daemon.log"); };
 destination kern { file("/var/log/kern.log"); };
 destination lpr { file("/var/log/lpr.log"); };
 destination mail { file("/var/log/mail.log"); };
-destination syslog { file("/var/log/syslog.log"); };
+destination syslog { file("/var/log/syslog"); };
 destination user { file("/var/log/user.log"); };
 destination uucp { file("/var/log/uucp.log"); };
 
@@ -61,7 +61,7 @@ destination console { usertty("root"); };
 
 # Virtual console.
 #
-destination console_all { file("/dev/vc/10"); };
+destination console_all { file("/dev/tty10"); };
 
 # The named pipe /dev/xconsole is for the nsole' utility.  To use it,
 # you must invoke nsole' with the -file' option:

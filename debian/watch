@@ -1,0 +1,2 @@
+version=3
+http://www.balabit.hu/downloads/files/syslog-ng/sources/ .*/sources/([\d\.]+)

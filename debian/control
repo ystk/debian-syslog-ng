@@ -1,14 +1,16 @@
 Source: syslog-ng
 Section: admin
 Priority: extra
-Maintainer: SZALAY Attila <sasa@debian.org>
-Build-depends: debhelper (>=3.0.0), libevtlog-dev, libnet1-dev, libglib2.0-dev (>= 2.4), pkg-config, libdbi0-dev, libssl-dev
-Standards-Version: 3.6.1
+Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.hu>
+Build-Depends: quilt, debhelper (>= 5), libnet1-dev, libevtlog-dev, libssl-dev, libwrap0-dev, libglib2.0-dev (>= 2.4), pkg-config, libdbi0-dev, libpcre3-dev, flex, bison, automake, autoconf, xsltproc, docbook-xsl, docbook-xml, libcap-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386]
+Build-Conflicts: autoconf2.13
+Standards-Version: 3.9.1
 
 Package: syslog-ng
 Architecture: any
-Depends: ${shlibs:Depends}, util-linux (>= 2.12-10)
+Depends: ${misc:Depends}, ${shlibs:Depends}, lsb-base (>= 3.0-6)
 Recommends: logrotate
+Suggests: libdbd-mysql, libdbd-pgsql, libdbd-sqlite3
 Provides: system-log-daemon, linux-kernel-log-daemon
 Conflicts: system-log-daemon, linux-kernel-log-daemon
 Description: Next generation logging daemon

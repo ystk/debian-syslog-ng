@@ -6,37 +6,56 @@
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
-export DH_COMPAT=3
+
+export DEB_HOST_ARCH_OS ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
 
 DDEBUG=`if (echo $(DEB_BUILD_OPTIONS) | grep -q debug) then \
 			echo "--enable-debug"; \
 		else \
-			echo "--disable-debug"; \
+			echo ""; \
 		fi`
 
-build: build-stamp
-build-stamp:
+configure: configure-stamp
+configure-stamp:
 	dh_testdir
-
-	./configure --prefix=/ \
+	aclocal
+	autoheader
+	automake --foreign --add-missing
+	autoconf
+	./configure --prefix=/usr \
+               --enable-ssl \
+               --enable-spoof-source \
+               --enable-tcp-wrapper \
                $(DDEBUG) \
                --mandir=/usr/share/man \
                --sysconfdir=/etc/syslog-ng \
-	       --localstatedir=/var/lib/syslog-ng
-	# Add here commands to compile the package.
+               --enable-dynamic-linking \
+               --localstatedir=/var/lib/syslog-ng
 
+	touch $@
+
+build: build-stamp
+build-stamp: configure
+	dh_testdir
 	$(MAKE) 
+#	(cd doc; $(MAKE) reference/syslog-ng.html.tar.gz)
 
-#	(cd doc/sgml; $(MAKE) syslog-ng.html.tar.gz)
+	touch $@
 
-	touch build-stamp
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
+	rm -f configure-stamp build-stamp
 
 	# Add here commands to clean up after the build process.
-	-$(MAKE) distclean
+	[ ! -f Makefile ] || $(MAKE) distclean 
+	rm -f tests/functional/test.conf tests/functional/test-output.log
+	rm -f config.log
+	rm -f depcomp aclocal.m4 install-sh missing mkinstalldirs configure
+	rm -f doc/reference/syslog-ng.html.tar.gz
+	rm -f doc/reference/syslog-ng.html/index.html src/cfg-grammar.c
+	rm -f src/cfg-grammar.h src/cfg-lex.c ylwrap
+	find . -name Makefile.in | xargs rm -f
 
 	dh_clean
 
@@ -44,24 +63,21 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
-	dh_installdirs
+	dh_install
+#	dh_installdirs
+	dh_installdocs NEWS
 
-	# Add here commands to install the package into debian/tmp.
-	$(MAKE) install DESTDIR=`pwd`/debian/tmp
+	# Add here commands to install the package into debian/syslog-ng/ .
+	$(MAKE) install DESTDIR=`pwd`/debian/syslog-ng
 
-	dh_movefiles
-
-	install -d -m 755 debian/syslog-ng/etc/default
-	install -m 644 debian/syslog-ng.default debian/syslog-ng/etc/default/syslog-ng
-	install -d -m 700 debian/syslog-ng/etc/syslog-ng
-	install -m 644 debian/syslog-ng.conf debian/syslog-ng/etc/syslog-ng
-
-#	install -d -m 700 debian/syslog-ng/etc/logcheck/ignore.d.paranoid
-#	install -m 644 debian/syslog-ng.logcheck.ignore debian/syslog-ng/etc/logcheck/ignore.d.paranoid/syslog-ng
-#	install -d -m 700 debian/syslog-ng/etc/logcheck/ignore.d.server
-#	install -m 644 debian/syslog-ng.logcheck.ignore debian/syslog-ng/etc/logcheck/ignore.d.server/syslog-ng
-#	install -d -m 700 debian/syslog-ng/etc/logcheck/ignore.d.workstation
-#	install -m 644 debian/syslog-ng.logcheck.ignore debian/syslog-ng/etc/logcheck/ignore.d.workstation/syslog-ng
+	# Fix config file for kfreebsd-*
+ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
+	sed -i 's/\/dev\/log/\/var\/run\/log/' debian/syslog-ng/etc/syslog-ng/syslog-ng.conf
+endif
+#	install -d -m 700 debian/syslog-ng/usr/share/doc/syslog-ng/html
+	rm -f debian/syslog-ng/usr/share/doc/syslog-ng/INSTALL
+	rmdir debian/syslog-ng/usr/libexec/
+#	(cd debian/syslog-ng/usr/share/doc/syslog-ng/html; tar -xzvf ../../../../../../../doc/reference/syslog-ng.html.tar.gz; mv syslog-ng.html/* .; rmdir syslog-ng.html)
 
 # Build architecture-independent files here.
 binary-indep: build install
@@ -69,26 +85,17 @@ binary-indep: build install
 
 # Build architecture-dependent files here.
 binary-arch: build install
-#	dh_testversion
 	dh_testdir
 	dh_testroot
-	dh_installdocs
 	dh_installexamples
-#	dh_installmenu
-#	dh_installemacsen
-	dh_installinit -r --no-start --name syslog-ng -- defaults 10 90
-#	dh_installcron
-	dh_installlogrotate --name syslog-ng
-	dh_installman doc/man/pdbtool.1 doc/man/syslog-ng.8 doc/man/syslog-ng.conf.5
-#	dh_undocumented
+	dh_installinit --no-start -- defaults 10 90
+	dh_installcron
+	dh_installlogrotate
+	dh_installlogcheck
 	dh_installchangelogs ChangeLog
-#	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
-	# You may want to make some executables suid here
-#	dh_suidregister
-#	dh_makeshlibs
 	dh_installdeb
 	dh_shlibdeps
 	dh_gencontrol
@@ -96,4 +103,4 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary
+.PHONY: build clean configure binary-indep binary-arch binary
