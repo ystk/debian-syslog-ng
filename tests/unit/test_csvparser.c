@@ -1,8 +1,10 @@
 #include "syslog-ng.h"
 #include "logmsg.h"
 #include "apphook.h"
-#include "logparser.h"
+#include "csvparser/csvparser.h"
 #include "misc.h"
+#include "cfg.h"
+#include "plugin.h"
 
 #include <time.h>
 #include <string.h>
@@ -21,6 +23,8 @@
     }				\
   while (0)
 
+MsgFormatOptions parse_options;
+
 int
 testcase(gchar *msg, guint parse_flags, gint max_columns, guint32 flags, gchar *delimiters, gchar *quotes, gchar *null_value, gchar *first_value, ...)
 {
@@ -29,6 +33,7 @@ testcase(gchar *msg, guint parse_flags, gint max_columns, guint32 flags, gchar *
   gchar *expected_value;
   gint i;
   va_list va;
+  NVTable *nvtable;
 
   const gchar *column_array[] =
   {
@@ -73,7 +78,8 @@ testcase(gchar *msg, guint parse_flags, gint max_columns, guint32 flags, gchar *
       column_array[max_columns] = NULL;
     }
 
-  logmsg = log_msg_new(msg, strlen(msg), NULL, parse_flags, NULL, -1, 0xFFFF);
+  parse_options.flags = parse_flags;
+  logmsg = log_msg_new(msg, strlen(msg), NULL, &parse_options);
 
   p = log_csv_parser_new();
   log_csv_parser_set_flags(p, flags);
@@ -84,7 +90,10 @@ testcase(gchar *msg, guint parse_flags, gint max_columns, guint32 flags, gchar *
     log_csv_parser_set_quote_pairs(p, quotes);
   if (null_value)
     log_csv_parser_set_null_value(p, null_value);
-  success = log_parser_process(&p->super, logmsg);
+
+  nvtable = nv_table_ref(logmsg->payload);
+  success = log_parser_process(&p->super, logmsg, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL));
+  nv_table_unref(nvtable);
 
   if (success && !first_value)
     {
@@ -96,7 +105,7 @@ testcase(gchar *msg, guint parse_flags, gint max_columns, guint32 flags, gchar *
       fprintf(stderr, "unexpected non-match; msg=%s\n", msg);
       exit(1);
     }
-  log_parser_free(&p->super);
+  log_pipe_unref(&p->super.super.super);
 
   va_start(va, first_value);
   expected_value = first_value;
@@ -134,6 +143,11 @@ main(int argc G_GNUC_UNUSED, char *argv[] G_GNUC_UNUSED)
 
   putenv("TZ=MET-1METDST");
   tzset();
+
+  configuration = cfg_new(0x0302);
+  plugin_load_module("syslogformat", configuration, NULL);
+  msg_format_options_defaults(&parse_options);
+  msg_format_options_init(&parse_options, configuration);
 
   testcase("<15> openvpn[2499]: PTHREAD support initialized", 0, -1, LOG_CSV_PARSER_ESCAPE_NONE, " ", NULL, NULL,
            "PTHREAD", "support", "initialized", NULL);
@@ -231,7 +245,7 @@ main(int argc G_GNUC_UNUSED, char *argv[] G_GNUC_UNUSED)
   testcase("postfix/smtpd/ququ", LP_NOPARSE, 2, LOG_CSV_PARSER_ESCAPE_NONE | LOG_CSV_PARSER_GREEDY | LOG_CSV_PARSER_DROP_INVALID, "/", NULL, NULL,
            "postfix", "smtpd/ququ", NULL);
 
-  testcase("Jul 27 19:55:33 myhost zabbix: ZabbixConnector.log : 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>", 0, 2, LOG_CSV_PARSER_GREEDY, " ", NULL, NULL,
+  testcase("Jul 27 19:55:33 myhost zabbix: ZabbixConnector.log : 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>", LP_EXPECT_HOSTNAME, 2, LOG_CSV_PARSER_GREEDY, " ", NULL, NULL,
            "ZabbixConnector.log", ": 19:55:32,782 INFO  [Thread-2834]     - [ZabbixEventSyncCommand] Processing   message <?xml version=\"1.0\" encoding=\"UTF-8\"?>", NULL);
 
   testcase("10.100.20.1 - - [31/Dec/2007:00:17:10 +0100] \"GET /cgi-bin/bugzilla/buglist.cgi?keywords_type=allwords&keywords=public&format=simple HTTP/1.1\" 200 2708 \"-\" \"curl/7.15.5 (i4 86-pc-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8c zlib/1.2.3 libidn/0.6.5\" 2 bugzilla.balabit", LP_NOPARSE, -1, LOG_CSV_PARSER_ESCAPE_BACKSLASH, " ", "\"\"[]", "-",

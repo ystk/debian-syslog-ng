@@ -1,3 +1,126 @@
+syslog-ng (3.3.5-4) testing-proposed-updates; urgency=low
+
+  [ Dominic Hargreaves <dom@earth.li> ]
+  * Remove previous symlink conffiles.
+
+  [ Laszlo Boszormenyi (GCS) ]
+  * Fix remaining systemd configuration issues.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Wed, 20 Mar 2013 18:15:49 +0100
+
+syslog-ng (3.3.5-3) testing-proposed-updates; urgency=low
+
+  [ Gergely Nagy <algernon@madhouse-project.org> ]
+  * Don't mark systemd symlinks in /etc as conffiles.
+  * Instead of installing systemd service file symlinks, install a
+    conffile, that includes the real service file (closes: #690067).
+  * Do not forcibly remove the systemd service files, that code is not
+    needed anymore.
+  * Use the standard /var/log/mail.{info,err,warn} location for the various
+    mail-related logs (closes: #692056).
+  * Use /dev/ttyva on kFreeBSD as the target of the d_console_all
+    destination (closes: #697042).
+
+  [ Laszlo Boszormenyi (GCS) ]
+  * Fix ivykis fallback on eventfd2 errors with the addition of
+    ivykis_fallback_fix.patch (closes: #702131).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Sun, 03 Mar 2013 17:57:00 +0100
+
+syslog-ng (3.3.5-2) unstable; urgency=low
+
+  [ Gergely Nagy <algernon@madhouse-project.org> ]
+  * Fix FTBFS on non-Linux architectures (closes: #672457).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Sun, 13 May 2012 00:42:42 +0200
+
+syslog-ng (3.3.5-1) unstable; urgency=low
+
+  [ Gergely Nagy <algernon@madhouse-project.org> ]
+  * New upstream release.
+    + afsocket: handle DNS failures as if it was a connection failure
+      (Closes: #660897)
+  * All patches dropped, they're applied upstream.
+  * Include upstream man pages, as they're DFSG-free now.
+  * Update debian/copyright for 1.0 of the spec.
+  * Bump Standards-Version to 3.9.3 (no changes required)
+  * Fix squeeze->wheezy install-remove-install upgrade path.
+    (Closes: #665905)
+  * Fix the init script to create /dev/xconsole properly on GNU/kFreeBSD.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Thu, 03 May 2012 08:23:46 +0000
+
+syslog-ng (3.3.4.dfsg-2) unstable; urgency=medium
+
+  * Get important bugfixes from upstream git tree.
+  * Correct short description of -dbg package (closes: #659119).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Thu, 16 Feb 2012 00:52:01 +0100
+
+syslog-ng (3.3.4.dfsg-1) unstable; urgency=low
+
+  * New upstream release:
+    - remove backported patches as this release contains them,
+    - fix FTBFS on Hurd, patch from Svante Signell <svante.signell@telia.com>
+      (closes: #648987).
+  * Add dfsg target to make the source DFSG compliant.
+  * Use debhelper compatibility level 9 for hardening flags to be effective
+    (closes: #655163).
+  * Make the package multiarch.
+
+  [ Gergely Nagy <algernon@madhouse-project.org> ]
+  * Introduced a syslog-ng-dbg package.
+  * Init script updates:
+    + Silence mknod errors, they're not interesting, and adds noise on
+    kFreeBSD.
+    + Use set -e.
+    + Use s-s-d's --oknodo options instead of checking the existence of a
+    pidfile ourselves.
+  * Refresh debian/copyright.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Wed, 01 Feb 2012 14:21:11 +0000
+
+syslog-ng (3.3.1.dfsg-1) unstable; urgency=low
+
+  * New upstream release with important fixes from upstream git tree with
+    non-free manpages removed.
+  * Drop syslog-ng.conf(5) (closes: #496521).
+  * syslog-ng(8) is generated, and does not mention -Q anymore
+    (closes: #616069).
+  * Supports CAP_SYSLOG on recent kernels (closes: #630172).
+  * Does not use g_timeout_add_seconds anymore (closes: #609154).
+
+  [ Gergely Nagy <algernon@madhouse-project.org> ]
+  * Update debian/copyright to DEP-5 format.
+  * Simplified the logrotate file by merging identical entries.
+  * Include local configuration files from /etc/syslog-ng/conf.d/ (Closes:
+    #609050).
+  * Update syslog-ng.conf to be fully 3.3 compliant.
+  * Compress both source and binaries (except the syslog-ng meta
+    package) with xz, instead of gzip.
+  * Use dpkg triggers to restart syslog-ng when appropriate.
+  * Include DFSG-free manual pages for all binaries.
+  * Build with Hardening enabled.
+  * Mention syslog(3) in /etc/default/syslog-ng, instead of
+    <linux/kernel.h> (Closes: #608605)
+  * Support 'status' in the init script.
+    Patch from Peter Eisentraut <petere@debian.org> (Closes: #644458)
+  * Build-Depend on libevtlog-dev (>= 0.2.12-5~) for correct shlibs.
+  * Use [linux-any] in Build-Depends instead of hardcoded links.
+    (Closes: #634715)
+  * Use $SYSLOGNG_OPTS in the init script when reloading syslog-ng.
+    (Closes: #589081)
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Tue, 11 Oct 2011 14:30:48 +0200
+
+syslog-ng (3.2.4-1) unstable; urgency=high
+
+  * New upstream release, fixing infinite loop via PCRE and global. No CVE
+    number yet, Vigil@nce id is 10648.
+  * Remove all patches, they were applied upstream.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.hu>  Mon, 16 May 2011 22:02:46 +0200
+
 syslog-ng (3.1.3-3) unstable; urgency=high
 
   * Fix capability support for unix streams and files when dir_owner() and/or
@@ -888,12 +1011,3 @@ syslog-ng (1.2.2-1) unstable; urgency=low
   * Initial Release.
 
  -- SZALAY Attila <sasa@debian.org>  Thu, 2 Dec 1999 01:38:28 +0200
-syslog-ng (3.0.5) syslogng30; urgency=low
-
-  * New upstream version.
-
- -- BalaBit Development Team <devel@balabit.hu>  Mon, 07 Dec 2009 15:34:53 +0100
-
-Local variables:
-mode: debian-changelog
-End:

@@ -1,106 +1,218 @@
-#!/usr/bin/make -f
-#-*- makefile -*-
-# Made with the aid of dh_make, by Craig Small
-# Sample debian/rules that uses debhelper. GNU copyright 1997 by Joey Hess.
-# Some lines taken from debmake, by Christoph Lameter.
+#! /usr/bin/make -f
+## debian/rules file for syslog-ng 3.3+
+## (C) 2011-2012 Gergely Nagy <algernon@madhouse-project.org>
+##
+## Released under the GPLv3+, see /usr/share/common-licenses/GPL-3 on
+## Debian systems.
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+# For my own sanity, when debian/rules is ran without any argument,
+# display something meaningful, instead of just running the first
+# override.
+help:
+	sensible-pager debian/README.source
 
-export DEB_HOST_ARCH_OS ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
-
-DDEBUG=`if (echo $(DEB_BUILD_OPTIONS) | grep -q debug) then \
-			echo "--enable-debug"; \
-		else \
-			echo ""; \
-		fi`
-
-configure: configure-stamp
-configure-stamp:
-	dh_testdir
-	aclocal
-	autoheader
-	automake --foreign --add-missing
-	autoconf
-	./configure --prefix=/usr \
-               --enable-ssl \
-               --enable-spoof-source \
-               --enable-tcp-wrapper \
-               $(DDEBUG) \
-               --mandir=/usr/share/man \
-               --sysconfdir=/etc/syslog-ng \
-               --enable-dynamic-linking \
-               --localstatedir=/var/lib/syslog-ng
-
-	touch $@
-
-build: build-stamp
-build-stamp: configure
-	dh_testdir
-	$(MAKE) 
-#	(cd doc; $(MAKE) reference/syslog-ng.html.tar.gz)
-
-	touch $@
-
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f configure-stamp build-stamp
-
-	# Add here commands to clean up after the build process.
-	[ ! -f Makefile ] || $(MAKE) distclean 
-	rm -f tests/functional/test.conf tests/functional/test-output.log
-	rm -f config.log
-	rm -f depcomp aclocal.m4 install-sh missing mkinstalldirs configure
-	rm -f doc/reference/syslog-ng.html.tar.gz
-	rm -f doc/reference/syslog-ng.html/index.html src/cfg-grammar.c
-	rm -f src/cfg-grammar.h src/cfg-lex.c ylwrap
-	find . -name Makefile.in | xargs rm -f
-
-	dh_clean
-
-install: build
-	dh_testdir
-	dh_testroot
-	dh_clean -k
-	dh_install
-#	dh_installdirs
-	dh_installdocs NEWS
-
-	# Add here commands to install the package into debian/syslog-ng/ .
-	$(MAKE) install DESTDIR=`pwd`/debian/syslog-ng
-
-	# Fix config file for kfreebsd-*
-ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
-	sed -i 's/\/dev\/log/\/var\/run\/log/' debian/syslog-ng/etc/syslog-ng/syslog-ng.conf
+##
+#* Environment setup
+#
+# If DEB_BUILD_OPTIONS has "debug" in it, we want to pass
+# --enable-debug to configure.
+#
+# We also want to build in a separate build directory:
+# debian/build-tree, because it's just so much easier to ignore files
+# in there.
+#
+# By the way, if one wants to pass extra flags to configure, that can
+# be done with EXTRA_CONFIGURE_OPTS, we don't override it, only append
+# to it.
+##
+ifneq (,$(filter debug,$(DEB_BUILD_OPTIONS)))
+EXTRA_CONFIGURE_OPTS += --enable-debug
 endif
-#	install -d -m 700 debian/syslog-ng/usr/share/doc/syslog-ng/html
-	rm -f debian/syslog-ng/usr/share/doc/syslog-ng/INSTALL
-	rmdir debian/syslog-ng/usr/libexec/
-#	(cd debian/syslog-ng/usr/share/doc/syslog-ng/html; tar -xzvf ../../../../../../../doc/reference/syslog-ng.html.tar.gz; mv syslog-ng.html/* .; rmdir syslog-ng.html)
 
-# Build architecture-independent files here.
-binary-indep: build install
-# We have nothing to do by default.
+DEFAULT_MODULES = affile,afprog,afsocket,afuser,afsql,basicfuncs,csvparser,dbparser,syslogformat
 
-# Build architecture-dependent files here.
-binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_installexamples
-	dh_installinit --no-start -- defaults 10 90
-	dh_installcron
-	dh_installlogrotate
-	dh_installlogcheck
-	dh_installchangelogs ChangeLog
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
+export DH_OPTIONS += -O-Bdebian/build-tree --dbg-package=syslog-ng-dbg
 
-binary: binary-indep binary-arch
-.PHONY: build clean configure binary-indep binary-arch binary
+include /usr/share/hardening-includes/hardening.make
+
+CFLAGS		?= $(shell dpkg-buildflags --get CFLAGS)
+LDFLAGS		?= $(shell dpkg-buildflags --get LDFLAGS)
+CFLAGS		+= $(HARDENING_CFLAGS)
+LDFLAGS		+= $(HARDENING_LDFLAGS)
+
+##
+#* Overrides for dh_auto*
+##
+
+# Autoreconf needs two things:
+# - m4 directories for the submodules, because otherwise it can
+#   randomly fail.
+# - We need to call autogen.sh instead of autoreconf.
+override_dh_autoreconf:
+	install -d lib/ivykis/m4 modules/afmongodb/libmongo-client/m4
+	touch lib/ivykis/configure.gnu modules/afmongodb/libmongo-client/configure.gnu
+	test -e debian/autoreconf.after || dh_autoreconf sh ./debian/autogen.sh
+
+# Oh, the joys of configure!
+# We pass down all appropriate options, along with EXTRA_CONFIGURE_OPTS.
+# This also sets SOURCE_REVISION to the debian package version.
+override_dh_auto_configure:
+	SOURCE_REVISION=$(shell dpkg-parsechangelog | sed -n "/^Version:/s/^Version: /$(shell lsb_release -is)\//p") \
+	dh_auto_configure -- \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc/syslog-ng \
+		--localstatedir=/var/lib/syslog-ng \
+		--datadir=/usr/share/syslog-ng \
+		\
+		--enable-dynamic-linking \
+		--enable-ssl \
+		--enable-spoof-source \
+		--enable-tcp-wrapper \
+		--enable-sql \
+		--enable-mongodb \
+		--enable-json \
+		--enable-systemd \
+		\
+		--with-libmongo-client=system \
+		--with-ivykis=internal \
+		--with-json=json-c \
+		\
+		--with-module-dir='$${exec_prefix}/lib/syslog-ng/$${VERSION}' \
+		--with-default-modules="${DEFAULT_MODULES}" \
+		--with-systemdsystemunitdir="/lib/systemd/system" \
+		\
+		SOURCE_REVISION="$${SOURCE_REVISION}" \
+		${EXTRA_CONFIGURE_OPTS}
+
+# Building is fine, but the manpages need some sed work, to replace
+# /opt/syslog-ng with something sensible.
+override_dh_auto_build:
+	dh_auto_build
+	cp -Rdauvx doc/man/ debian/build-tree/doc/
+	for f in debian/build-tree/doc/man/*; do \
+		sed -e "s#/opt/syslog\\\-ng/etc#/etc/syslog-ng#g" \
+		    -e "s#/opt/syslog\\\-ng##g" \
+		    -e "/affile/{s#,#, #g}" \
+		    -e 's#^/$$##' <$$f >$$f.new && \
+		rm $$f && mv $$f.new $$f; \
+	done
+
+# Tests. While tests are good, they're quite costy, and I'm not
+# convinced they'd run on the buildds at all. Therefore, they're
+# disabled.
+override_dh_auto_test:
+
+# Cleaning is another fun thing: make distclean will not remove
+# everything we want to remove (ie, everything generated, no
+# exceptions). So we do a bit of finding and remove a few things it
+# missed. We also remove the m4 directories we created for autoreconf
+# earlier.
+override_dh_auto_clean:
+	dh_auto_clean
+	find . \( -name 'Makefile.in' -or \
+		  -name 'aclocal.m4' -or \
+		  -name 'configure' -or \
+		  -name 'depcomp' -or -name 'missing' -or \
+		  -name 'install-sh' -or -name 'ltmain.sh' -or \
+		  -name 'ylwrap' -or \
+		  -regex '.*/config\.\(sub\|guess\|h\.in\)' \) \
+	     -exec rm '{}' \;
+	rm -f $(CURDIR)/m4/lt*.m4 $(CURDIR)/m4/libtool.m4 $(CURDIR)/m4/pkg.m4
+	rm -rf $(CURDIR)/lib/ivykis/m4 $(CURDIR)/modules/afmongodb/libmongo-client/m4
+	rm -rf debian/build-tree/
+
+# We also want to install ivykis headers and whatnot, so override
+# _auto_install, and do it too.
+#
+# This also installs the systemd files on Linux platforms.
+override_dh_auto_install:
+	dh_auto_install
+	${MAKE} -C debian/build-tree/lib/ivykis install DESTDIR=$(CURDIR)/debian/tmp
+	install -m 0644 contrib/systemd/syslog-ng.service \
+		debian/syslog-ng-core/lib/systemd/system/
+
+##
+#* Overrides for other debhelper commands
+#
+# Below are overrides for individual debhelper commands.
+##
+
+# On kFreeBSD, d_console_all should log to /dev/ttyva, everywhere
+# else, to tty10. To keep the config as simple as possible, this is
+# accomplished by pulling the target device out of syslog-ng.conf,
+# into `scl-root`/system/tty10.conf.
+#
+# On kFreeBSD, this defines the `tty10` variable to /dev/ttyva,
+# everywhere else to /dev/tty10.
+#
+# It will be installed into the syslog-ng-core package by the
+# override_dh_install target.
+ifeq (${DEB_HOST_ARCH_OS},kfreebsd)
+TTY10_CONF = tty10.kfreebsd.conf
+else
+TTY10_CONF = tty10.linux.conf
+endif
+
+# Upstream installs the merge-grammar.pl as data, thus not
+# executable. Yet, it needs to be, since the Makefiles that upstream
+# also installs expect it so.
+#
+# We also want to install the systemd unit file into syslog-ng-core,
+# so do that here too, along with installing tty10.conf.
+override_dh_install:
+	dh_install
+ifneq (,$(filter libsyslog-ng-dev,$(shell dh_listpackages)))
+	chmod +x debian/libsyslog-ng-dev/usr/share/syslog-ng/tools/merge-grammar.pl
+endif
+
+	install -m 0644 debian/${TTY10_CONF} \
+		$(CURDIR)/debian/syslog-ng-core/usr/share/syslog-ng/include/scl/system/tty10.conf
+
+# Install the NEWS file as upstream changelog.
+# Rationale: the ChangeLog file is an old artifact from the Arch
+# times. It is not updated, and is obsolete.
+override_dh_installchangelogs:
+	dh_installchangelogs $(CURDIR)/NEWS
+
+# Init files and whatnot were moved to syslog-ng-core, but we want to
+# retain the old filenames. Furthermore, the init script is now
+# triggered by dpkg triggers, so the maintainer scripts should not
+# stop, start or reload syslog-ng anymore.
+override_dh_installinit:
+	dh_installinit --no-start --name syslog-ng -- defaults 10 90
+
+# Logrotate and Logcheck files were moved from syslog-ng to
+# syslog-ng-core too, and like in init's case, we want to keep the old
+# name.
+override_dh_installlogrotate:
+	dh_installlogrotate --name syslog-ng
+
+override_dh_installlogcheck:
+	dh_installlogcheck --name syslog-ng
+
+# dh_makeshlibs wants to be clever and treat plugins as shared libs.
+# Slap it in the face, and tell it not to.
+override_dh_makeshlibs:
+	dh_makeshlibs -Xusr/lib/syslog-ng
+
+# Compress the .debs with xz, it reduces the size of syslog-ng-core by
+# about 40%. Except, we don't compress the arch: all packages with it,
+# because I want to reuse those even on systems that do not support
+# data.tar.xz .
+override_dh_builddeb:
+	dh_builddeb -i
+	dh_builddeb -a -- -Zxz
+
+##
+#* Other, non-override targets
+##
+
+# Dummy build thingy, to work around upstream build/ dir.
+build: build-stamp
+build-stamp:
+.PHONY: build-stamp
+
+# And for the rest, there is debhelper!
+%:
+	dh $@ --with autoreconf

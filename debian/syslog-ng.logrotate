@@ -88,15 +88,6 @@
    delaycompress
 }
 
-/var/log/error {
-   rotate 4
-   weekly
-   missingok
-   notifempty
-   compress
-   delaycompress
-}
-
 /var/log/messages {
    rotate 4
    weekly
@@ -131,6 +122,6 @@
    compress
    delaycompress
    postrotate
-      /usr/sbin/invoke-rc.d syslog-ng reload >/dev/null
+      /etc/init.d/syslog-ng reload >/dev/null
    endscript
 }

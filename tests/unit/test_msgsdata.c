@@ -1,8 +1,12 @@
 #include "logmsg.h"
 #include "apphook.h"
+#include "cfg.h"
+#include "plugin.h"
 
 #include <stdlib.h>
 #include <string.h>
+
+MsgFormatOptions parse_options;
 
 void
 testcase_update(const gchar *msg, const gchar *expected_sd_str, gchar *elem_name1, ...)
@@ -12,9 +16,11 @@ testcase_update(const gchar *msg, const gchar *expected_sd_str, gchar *elem_name
   va_list va;
   gchar *elem, *param, *value;
 
+  parse_options.flags |= LP_SYSLOG_PROTOCOL;
+
   va_start(va, elem_name1);
 
-  logmsg = log_msg_new(msg, strlen(msg), NULL, LP_SYSLOG_PROTOCOL, NULL, -1, 0xFFFF);
+  logmsg = log_msg_new(msg, strlen(msg), NULL, &parse_options);
 
   elem = elem_name1;
   param = va_arg(va, char *);
@@ -30,7 +36,7 @@ testcase_update(const gchar *msg, const gchar *expected_sd_str, gchar *elem_name
       value = va_arg(va, char *);
     }
 
-  log_msg_format_sdata(logmsg, sd_str);
+  log_msg_format_sdata(logmsg, sd_str, 0);
 
   if (strcmp(sd_str->str, expected_sd_str) != 0)
     {
@@ -46,6 +52,11 @@ int
 main(int argc G_GNUC_UNUSED, char *argv[] G_GNUC_UNUSED)
 {
   app_startup();
+
+  configuration = cfg_new(0x0302);
+  plugin_load_module("syslogformat", configuration, NULL);
+  msg_format_options_defaults(&parse_options);
+  msg_format_options_init(&parse_options, configuration);
 
   testcase_update("<132>1 2006-10-29T01:59:59.156+01:00 mymachine evntslog - - [exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] An application event log entry...",
                   "[exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"][meta sequenceId=\"11\"][syslog-ng param=\"value\"]",

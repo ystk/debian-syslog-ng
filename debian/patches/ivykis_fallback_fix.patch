@@ -1,0 +1,31 @@
+Description: make ivykis properly fallback on eventfd2 errors
+ The Linux glibc eventfd() wrapper function (around the SYS_eventfd{,2}
+ system calls) returns EINVAL if it is given a nonzero flags argument
+ and SYS_eventfd2 (which is the variant of SYS_eventfd that takes a flags
+ argument) isn't implemented, while iv_event_raw was expecting to get
+ either ENOSYS or success.
+ .
+ Instead of falling back on SYS_eventfd by calling the eventfd() wrapper
+ again with a zero flags argument and then setting the O_NONBLOCK and
+ O_CLOEXEC flags by hand, disable use of eventfd on systems that have
+ SYS_eventfd but not SYS_eventfd2 as a minimally invasive fix for the
+ stable branches.
+ Taken from: https://github.com/buytenh/ivykis/commit/89f67f97477aeba24aebfc58ae1a17e5bea69724.patch
+Author: Lennert Buytenhek <buytenh@wantstofly.org>
+Bug-Debian: http://bugs.debian.org/702131
+Forwarded: not-needed
+Last-Update: 2012-12-09
+
+---
+
+--- syslog-ng-3.3.5.orig/lib/ivykis/modules/iv_event_raw.c
++++ syslog-ng-3.3.5/lib/ivykis/modules/iv_event_raw.c
+@@ -91,7 +91,7 @@ int iv_event_raw_register(struct iv_even
+ 
+ 		ret = eventfd2(0, EFD_NONBLOCK | EFD_CLOEXEC);
+ 		if (ret < 0) {
+-			if (errno != ENOSYS) {
++			if (errno != ENOSYS && errno != EINVAL) {
+ 				perror("eventfd2");
+ 				return -1;
+ 			}

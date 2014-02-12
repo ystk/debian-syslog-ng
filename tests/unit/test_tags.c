@@ -29,7 +29,7 @@ do { \
 } while (0);
 
 gchar *
-get_tag_by_id(guint id)
+get_tag_by_id(LogTagId id)
 {
   return g_strdup_printf("tags%d", id);
 }
@@ -39,7 +39,8 @@ test_tags(void)
 {
   guint i, check;
   guint id;
-  gchar *name, *tag_name;
+  gchar *name;
+  const gchar *tag_name;
 
   for (check = 0; check < 2; check++)
     for (i = 0; i < NUM_TAGS; i++)
@@ -82,17 +83,18 @@ test_tags(void)
 void
 test_msg_tags()
 {
-  LogMessage *msg = log_msg_new_empty();
   gchar *name;
   gint i, set;
 
   test_msg("=== LogMessage tests ===\n");
 
+  LogMessage *msg = log_msg_new_empty();
   for (set = 1; set != -1; set--)
     {
       for (i = NUM_TAGS; i > -1; i--)
         {
           name = get_tag_by_id(i);
+
           if (set)
             log_msg_set_tag_by_name(msg, name);
           else
@@ -104,54 +106,67 @@ test_msg_tags()
 
           g_free(name);
         }
-    
+    }
+  log_msg_unref(msg);
+
+  msg = log_msg_new_empty();
+  for (set = 1; set != -1; set--)
+    {
       for (i = 0; i < NUM_TAGS; i++)
         {
           name = get_tag_by_id(i);
-          test_msg("Checking tag %d %s\n", i, name);
-    
+
+          if (set)
+            log_msg_set_tag_by_name(msg, name);
+          else
+            log_msg_clear_tag_by_name(msg, name);
+
+          test_msg("%s tag %d %s\n", set ? "Setting" : "Clearing", i, name);
+
           if (set ^ log_msg_is_tag_by_id(msg, i))
-            test_fail("Tag is %sset (by id) %d\n", set ? "not " : "", i);
-          if (set ^ log_msg_is_tag_by_name(msg, name))
-            test_fail("Tag is %sset (by name) %s\n", set ? "not " : "", name);
+            test_fail("Tag is %sset now (by id) %d\n", set ? "not " : "", i);
+
+          if (set && i < sizeof(gulong) * 8 && msg->num_tags != 0)
+            test_fail("Small IDs are set which should be stored in-line but num_tags is non-zero");
           
           g_free(name);
         }
     }
-
   log_msg_unref(msg);
+
 }
 
 void
-test_filters(void)
+test_filters(gboolean not)
 {
   LogMessage *msg = log_msg_new_empty();
   FilterExprNode *f = filter_tags_new(NULL);
   guint i;
   GList *l = NULL;
 
-  test_msg("=== filter tests ===\n");
+  test_msg("=== filter tests %s===\n", not ? "not " : "");
 
   for (i = 1; i < FILTER_TAGS; i += 3)
     l = g_list_prepend(l, get_tag_by_id(i));
 
   filter_tags_add(f, l);
+  f->comp = not;
 
   for (i = 0; i < FILTER_TAGS; i++)
     {
       test_msg("Testing filter, message has tag %d\n", i);
       log_msg_set_tag_by_id(msg, i);
 
-      if (((i % 3 == 1) ^ filter_expr_eval(f, msg)))
+      if (((i % 3 == 1) ^ filter_expr_eval(f, msg)) ^ not)
         test_fail("Failed to match message by tag %d\n", i);
 
       test_msg("Testing filter, message no tag\n");
       log_msg_clear_tag_by_id(msg, i);
-      if (filter_expr_eval(f, msg))
+      if (filter_expr_eval(f, msg) ^ not)
         test_fail("Failed to match message with no tags\n");
     }
 
-  filter_expr_free(f);
+  filter_expr_unref(f);
   log_msg_unref(msg);
 }
 
@@ -167,7 +182,8 @@ main(int argc, char *argv[])
   
   test_tags();
   test_msg_tags();
-  test_filters();
+  test_filters(FALSE);
+  test_filters(TRUE);
 
   app_shutdown();
   return  (fail ? 1 : 0);
