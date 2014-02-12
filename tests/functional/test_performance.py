@@ -3,9 +3,9 @@ from log import *
 from messagegen import *
 from messagecheck import *
 
-config = """@version: 3.0
+config = """@version: 3.3
 
-options { ts_format(iso); chain_hostnames(no); keep_hostname(yes); };
+options { ts_format(iso); chain_hostnames(no); keep_hostname(yes); threaded(yes); };
 
 source s_int { internal(); };
 source s_tcp { tcp(port(%(port_number)d)); };
@@ -21,7 +21,7 @@ def test_performance():
       'bzorp': 10000
     }
     print_user("Starting loggen for 10 seconds")
-    out = os.popen("../loggen/loggen -r 1000000 -q -i -S -s 120 -I 10 127.0.0.1 %d 2>&1 |tail -n +1" % port_number, 'r').read()
+    out = os.popen("../loggen/loggen -r 1000000 -Q -i -S -s 160 -I 10 127.0.0.1 %d 2>&1 |tail -n +1" % port_number, 'r').read()
 
     print_user("performane: %s" % out)
     rate = float(re.sub('^.*rate = ([0-9.]+).*$', '\\1', out))

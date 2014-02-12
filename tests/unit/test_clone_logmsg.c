@@ -4,6 +4,8 @@
 #include "apphook.h"
 #include "gsockaddr.h"
 #include "logpipe.h"
+#include "cfg.h"
+#include "plugin.h"
 
 #include <time.h>
 #include <string.h>
@@ -21,6 +23,7 @@
     }				\
   while (0)
 
+MsgFormatOptions parse_options;
 
 unsigned long
 absolute_value(signed long diff)
@@ -75,21 +78,23 @@ testcase(gchar *msg,
   if (bad_hostname_re)
     TEST_ASSERT(regcomp(&bad_hostname, bad_hostname_re, REG_NOSUB | REG_EXTENDED) == 0, "%d", 0, 0);
 
-  logmsg = log_msg_new(msg, strlen(msg), addr, parse_flags, bad_hostname_re ? &bad_hostname : NULL, -1, 0xFFFF);
+  parse_options.flags = parse_flags;
+  parse_options.bad_hostname = &bad_hostname;
+  logmsg = log_msg_new(msg, strlen(msg), addr, &parse_options);
   TEST_ASSERT(logmsg->pri == expected_pri, "%d", logmsg->pri, expected_pri);
   if (expected_stamps_sec)
     {
       if (expected_stamps_sec != 1)
         {
-            TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].time.tv_sec == expected_stamps_sec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].time.tv_sec, (int) expected_stamps_sec);
+            TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].tv_sec == expected_stamps_sec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].tv_sec, (int) expected_stamps_sec);
           }
-        TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].time.tv_usec == expected_stamps_usec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].time.tv_usec, (int) expected_stamps_usec);
+        TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].tv_usec == expected_stamps_usec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].tv_usec, (int) expected_stamps_usec);
         TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].zone_offset == expected_stamps_ofs, "%d", (int) logmsg->timestamps[LM_TS_STAMP].zone_offset, (int) expected_stamps_ofs);
     }
   else
     {
       time(&now);
-      TEST_ASSERT(absolute_value(logmsg->timestamps[LM_TS_STAMP].time.tv_sec - now) < 1, "%d", 0, 0);
+      TEST_ASSERT(absolute_value(logmsg->timestamps[LM_TS_STAMP].tv_sec - now) < 1, "%d", 0, 0);
     }
   TEST_ASSERT(strcmp(log_msg_get_value(logmsg, LM_V_HOST, NULL), expected_host) == 0, "%s", log_msg_get_value(logmsg, LM_V_HOST, NULL), expected_host);
   TEST_ASSERT(strcmp(log_msg_get_value(logmsg, LM_V_PROGRAM, NULL), expected_program) == 0, "%s", log_msg_get_value(logmsg, LM_V_PROGRAM, NULL), expected_program);
@@ -98,21 +103,23 @@ testcase(gchar *msg,
   TEST_ASSERT(strcmp(log_msg_get_value(logmsg, LM_V_MSGID, NULL), expected_message_id) == 0, "%s", log_msg_get_value(logmsg, LM_V_MSGID, NULL), expected_message_id);
 
   /* SD elements */
-  log_msg_format_sdata(logmsg, sd_str);
+  log_msg_format_sdata(logmsg, sd_str, 0);
   TEST_ASSERT(strcmp(sd_str->str, expected_sd_str) == 0, "%s", sd_str->str, expected_sd_str);
+
+  log_msg_set_tag_by_name(logmsg, "almafa");
 
   /* check if the sockaddr matches */
   g_sockaddr_format(logmsg->saddr, logmsg_addr, sizeof(logmsg_addr), GSA_FULL);
 
-  path_options.flow_control = FALSE;
+  path_options.ack_needed = FALSE;
   cloned = log_msg_clone_cow(logmsg, &path_options);
 
   g_sockaddr_format(cloned->saddr, cloned_addr, sizeof(cloned_addr), GSA_FULL);
   TEST_ASSERT(strcmp(logmsg_addr, cloned_addr) == 0, "%s", cloned_addr, logmsg_addr);
 
   TEST_ASSERT(logmsg->pri == cloned->pri, "%d", logmsg->pri, cloned->pri);
-  TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].time.tv_sec == cloned->timestamps[LM_TS_STAMP].time.tv_sec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].time.tv_sec, (int) cloned->timestamps[LM_TS_STAMP].time.tv_sec);
-  TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].time.tv_usec == cloned->timestamps[LM_TS_STAMP].time.tv_usec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].time.tv_usec, (int) cloned->timestamps[LM_TS_STAMP].time.tv_usec);
+  TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].tv_sec == cloned->timestamps[LM_TS_STAMP].tv_sec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].tv_sec, (int) cloned->timestamps[LM_TS_STAMP].tv_sec);
+  TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].tv_usec == cloned->timestamps[LM_TS_STAMP].tv_usec, "%d", (int) logmsg->timestamps[LM_TS_STAMP].tv_usec, (int) cloned->timestamps[LM_TS_STAMP].tv_usec);
   TEST_ASSERT(logmsg->timestamps[LM_TS_STAMP].zone_offset == cloned->timestamps[LM_TS_STAMP].zone_offset, "%d", (int) logmsg->timestamps[LM_TS_STAMP].zone_offset, (int) cloned->timestamps[LM_TS_STAMP].zone_offset);
   TEST_ASSERT(strcmp(log_msg_get_value(logmsg, LM_V_HOST, NULL), log_msg_get_value(cloned, LM_V_HOST, NULL)) == 0, "%s", log_msg_get_value(logmsg, LM_V_HOST, NULL), log_msg_get_value(cloned, LM_V_HOST, NULL));
   TEST_ASSERT(strcmp(log_msg_get_value(logmsg, LM_V_PROGRAM, NULL), log_msg_get_value(cloned, LM_V_PROGRAM, NULL)) == 0, "%s", log_msg_get_value(logmsg, LM_V_PROGRAM, NULL), log_msg_get_value(cloned, LM_V_PROGRAM, NULL));
@@ -121,7 +128,7 @@ testcase(gchar *msg,
   TEST_ASSERT(strcmp(log_msg_get_value(logmsg, LM_V_MSGID, NULL), log_msg_get_value(cloned, LM_V_MSGID, NULL)) == 0, "%s", log_msg_get_value(logmsg, LM_V_MSGID, NULL), log_msg_get_value(cloned, LM_V_MSGID, NULL));
 
   /* SD elements */
-  log_msg_format_sdata(cloned, sd_str);
+  log_msg_format_sdata(cloned, sd_str, 0);
   TEST_ASSERT(strcmp(sd_str->str, expected_sd_str) == 0, "%s", sd_str->str, expected_sd_str);
 
 
@@ -153,6 +160,8 @@ testcase(gchar *msg,
   TEST_ASSERT(strcmp(log_msg_get_value(cloned, LM_V_MSGID, NULL), "newmsgid") == 0, "%s", log_msg_get_value(cloned, LM_V_MSGID, NULL), "newmsgid");
   TEST_ASSERT(strcmp(log_msg_get_value(cloned, LM_V_SOURCE, NULL), "newsource") == 0, "%s", log_msg_get_value(cloned, LM_V_SOURCE, NULL), "newsource");
 
+  TEST_ASSERT(log_msg_is_tag_by_name(cloned, "almafa"), "%d", log_msg_is_tag_by_name(cloned, "almafa"), TRUE);
+
   log_msg_unref(cloned);
   log_msg_unref(logmsg);
   g_string_free(sd_str, TRUE);
@@ -166,6 +175,11 @@ main(int argc G_GNUC_UNUSED, char *argv[] G_GNUC_UNUSED)
 
   putenv("TZ=MET-1METDST");
   tzset();
+
+  configuration = cfg_new(0x0302);
+  plugin_load_module("syslogformat", configuration, NULL);
+  msg_format_options_defaults(&parse_options);
+  msg_format_options_init(&parse_options, configuration);
 
   testcase("<7>1 2006-10-29T01:59:59.156+01:00 mymachine.example.com evntslog - ID47 [exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
            LP_SYSLOG_PROTOCOL, //flags

@@ -1,6 +1,6 @@
 Summary: Next generation system logging daemon
 Name: syslog-ng
-Version: 3.1.3
+Version: 3.3.5
 Release: 1
 License: GPL
 Group: System Environment/Daemons
@@ -94,25 +94,25 @@ elif [ "%{_host_vendor}" = "redhat" ] || [ "%{_host_vendor}" = "suse" ]; then
 fi
 
 # install documentation
-[ -d "${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3" ] || ./install-sh -d "${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3"
+[ -d "${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5" ] || ./install-sh -d "${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5"
 ./install-sh -o root -g root -m 0644 ChangeLog \
-  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3/ChangeLog
+  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5/ChangeLog
 ./install-sh -o root -g root -m 0644 NEWS \
-  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3/NEWS
+  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5/NEWS
 ./install-sh -o root -g root -m 0644 README \
-  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3/README
+  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5/README
 ./install-sh -o root -g root -m 0644 AUTHORS \
-  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3/AUTHORS
+  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5/AUTHORS
 ./install-sh -o root -g root -m 0644 COPYING \
-  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.1.3/COPYING
+  ${RPM_BUILD_ROOT}/%{_prefix}/share/doc/syslog-ng-3.3.5/COPYING
 
 %files
 %defattr(-,root,root)
 %{prefix}/sbin/syslog-ng
 %{prefix}/bin/loggen
 %{_mandir}/*
-%docdir %{_prefix}/share/doc/syslog-ng-3.1.3
-%{_prefix}/share/doc/syslog-ng-3.1.3/*
+%docdir %{_prefix}/share/doc/syslog-ng-3.3.5
+%{_prefix}/share/doc/syslog-ng-3.3.5/*
 %config(noreplace) /etc/syslog-ng/syslog-ng.conf
 %ifnos aix5.2
 /etc/rc.d/init.d/syslog-ng
@@ -238,11 +238,11 @@ fi
 [ $RPM_BUILD_ROOT = / ] || rm -rf $RPM_BUILD_ROOT
 
 %changelog
-* Mon Sep 14 2009 Balazs Scheidler <bazsi@balabit.com> 3.1.3-1
+* Mon Sep 14 2009 Balazs Scheidler <bazsi@balabit.com> 3.3.5-1
 - Removed some more Premium Edition related cruft.
-* Wed Sep 02 2009 Balazs Scheidler <bazsi@balabit.com> 3.1.3-1
+* Wed Sep 02 2009 Balazs Scheidler <bazsi@balabit.com> 3.3.5-1
 - Removed the references to the documentation and libzlicense-devel
-* Wed Apr 04 2007 Tamas Pal <folti@balabit.com> 3.1.3-1
+* Wed Apr 04 2007 Tamas Pal <folti@balabit.com> 3.3.5-1
 - Added libnet-devel and libzlicense-devel to BuildRequires.
 - Changed Packager to Tamas Pal.
 - Changed license to BalaBit Proprietary one.
