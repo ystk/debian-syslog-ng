@@ -1,4 +1,4 @@
-debian/man/update-patterndb.1
+debian/man/*.1
 debian/tmp/usr/share/man/man1/loggen.1
 debian/tmp/usr/share/man/man1/pdbtool.1
 debian/tmp/usr/share/man/man1/syslog-ng-ctl.1
