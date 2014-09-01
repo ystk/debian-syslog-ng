@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2002-2010 BalaBit IT Ltd, Budapest, Hungary
- * Copyright (c) 1998-2010 Balázs Scheidler
+ * Copyright (c) 2002-2012 BalaBit IT Ltd, Budapest, Hungary
+ * Copyright (c) 1998-2012 Balázs Scheidler
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -304,7 +304,7 @@ afinter_source_new(AFInterSourceDriver *owner, LogSourceOptions *options)
   AFInterSource *self = g_new0(AFInterSource, 1);
   
   log_source_init_instance(&self->super);
-  log_source_set_options(&self->super.super, options, 0, SCS_INTERNAL, owner->super.super.id, NULL, FALSE);
+  log_source_set_options(&self->super, options, 0, SCS_INTERNAL, owner->super.super.id, NULL, FALSE);
   afinter_source_init_watches(self);
   self->super.super.init = afinter_source_init;
   self->super.super.deinit = afinter_source_deinit;

@@ -1,43 +1,39 @@
-man_MANS = man/syslog-ng.8 man/syslog-ng.conf.5 man/pdbtool.1 man/loggen.1 man/syslog-ng-ctl.1
+man_MANS	+= \
+		doc/man/syslog-ng.8 \
+		doc/man/syslog-ng.conf.5 \
+		doc/man/pdbtool.1 \
+		doc/man/loggen.1 \
+		doc/man/syslog-ng-ctl.1
 
-EXTRA_DIST =  man/syslog-ng.8.xml man/syslog-ng.conf.5.xml man/pdbtool.1.xml man/loggen.1.xml man/syslog-ng-ctl.1.xml \
-	$(man_MANS) \
-	security/bof-2002-09-27.txt \
-	security/dos-2000-11-22.txt \
-	xsd/patterndb-1.xsd \
-	xsd/patterndb-2.xsd \
-	xsd/patterndb-3.xsd \
-	xsd/patterndb-4.xsd
+EXTRA_DIST	+=  \
+		doc/man/syslog-ng.8.xml \
+		doc/man/syslog-ng.conf.5.xml \
+		doc/man/pdbtool.1.xml \
+		doc/man/loggen.1.xml \
+		doc/man/syslog-ng-ctl.1.xml \
+		$(man_MANS) \
+		doc/security/bof-2002-09-27.txt \
+		doc/security/dos-2000-11-22.txt \
+		doc/xsd/patterndb-1.xsd \
+		doc/xsd/patterndb-2.xsd \
+		doc/xsd/patterndb-3.xsd \
+		doc/xsd/patterndb-4.xsd
+
+xsddir		= $(datadir)/xsd
+xsd_DATA	= \
+		doc/xsd/patterndb-1.xsd \
+		doc/xsd/patterndb-2.xsd \
+		doc/xsd/patterndb-3.xsd \
+		doc/xsd/patterndb-4.xsd
 
 # NOTE: this uses a hard-coded path for the XSL stylesheets, but the
-# end-result is also included in the tarball.  Might need to detect this
-# from the configure script.
+# end-result is also included in the tarball. If so need be, this can
+# be overridden from the make command line or via the environment.
+XSL_STYLESHEET = /usr/share/xml/docbook/stylesheet/docbook-xsl/manpages/docbook.xsl
 
-XSLTPROC_MANPAGE=xsltproc --xinclude --output $@  /usr/share/xml/docbook/stylesheet/docbook-xsl/manpages/docbook.xsl $< | sed -e 's,/opt/syslog-ng/etc,$(sysconfdir),g' -e 's,/opt/syslog-ng/,$(prefix),g'
+sysconfdir_e = $(shell echo "${sysconfdir}" | sed -e "s,-,\\\\\\\\-,g")
+prefix_e = $(shell echo "${prefix}" | sed -e "s,-,\\\\\\\\-,g")
 
-xsddir = $(datadir)/xsd
-xsd_DATA = xsd/patterndb-1.xsd xsd/patterndb-2.xsd xsd/patterndb-3.xsd
-
-man/%.1: man/%.1.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.2: man/%.2.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.3: man/%.3.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.4: man/%.4.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.5: man/%.5.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.6: man/%.6.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.7: man/%.7.xml
-	$(XSLTPROC_MANPAGE)
-
-man/%.8: man/%.8.xml
-	$(XSLTPROC_MANPAGE)
+doc/man/%: doc/man/%.xml
+	$(AM_V_GEN)xsltproc --xinclude --output $@ ${XSL_STYLESHEET} $<
+	$(AM_V_at)sed -e 's,/opt/syslog\\*-ng/etc,$(sysconfdir_e),g' -e 's,/opt/syslog\\*-ng/,$(prefix_e)/,g' <$@ >$@.tmp && mv $@.tmp $@
