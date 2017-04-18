@@ -2,7 +2,6 @@
 ## debian/rules file for syslog-ng 3.3+
 ## (C) 2010-2012 Laszlo Boszormenyi (GCS) <gcs@debian.hu>
 ## (C) 2011-2014 Gergely Nagy <algernon@madhouse-project.org>
-## (C) 2015-2016 Laszlo Budai <laszlo.budai@balabit.com>
 ##
 ## Released under the GPLv2+, see /usr/share/common-licenses/GPL-2 on
 ## Debian systems.
@@ -56,19 +55,27 @@ else
 SYSTEMD_CONFIGURE_OPTS = --disable-systemd
 endif
 
+# If DH_QUIET is set, then we want silent mode.
+# If DH_VERBOSE is set, we do not want silent mode.
+# If neither is set, we want the default: verbose mode.
+SILENT_MODE	       = --disable-silent-rules
+ifneq (,${DH_QUIET})
+SILENT_MODE	       = --enable-silent-rules
+endif
+ifneq (,${DH_VERBOSE})
+SILENT_MODE	       = --disable-silent-rules
+endif
+
 ##
 #* Overrides for dh_auto*
 ##
-
-# We need to call autogen.sh instead of autoreconf.
-override_dh_autoreconf:
-	[ -e "configure" ] || dh_autoreconf -- sh -c "autoreconf --force -i && ./autogen.sh"
 
 # Oh, the joys of configure!
 # We pass down all appropriate options, along with EXTRA_CONFIGURE_OPTS.
 # This also sets SOURCE_REVISION to the debian package version.
 override_dh_auto_configure:
 	install -d debian/build-tree
+	-rm -rf doc/man/*.?
 	SOURCE_REVISION="$(shell dpkg-parsechangelog | \
 			  sed -n '/^Version:/s/^Version: //p')"; \
 	dh_auto_configure -- \
@@ -77,9 +84,9 @@ override_dh_auto_configure:
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc/syslog-ng \
 		--localstatedir=/var/lib/syslog-ng \
-		--datadir=/usr/share \
 		--libdir=/usr/lib/syslog-ng \
-		--disable-silent-rules \
+		${SILENT_MODE} \
+		\
 		--enable-dynamic-linking \
 		--enable-ssl \
 		--enable-spoof-source \
@@ -88,41 +95,34 @@ override_dh_auto_configure:
 		--enable-mongodb \
 		--enable-json \
 		--enable-riemann \
+		--disable-java \
 		--enable-manpages \
-		--enable-python \
-		--enable-java \
-		--with-libmongo-client=system \
+		--enable-amqp \
+		\
+		--with-mongoc=system \
 		--with-ivykis=system \
+		--with-jsonc=system \
+		--with-librabbitmq-client=system \
+		\
 		--with-module-dir='$${exec_prefix}/lib/syslog-ng/${UMAJOR}' \
 		--with-systemdsystemunitdir="/lib/systemd/system" \
+		\
 		SOURCE_REVISION="$${SOURCE_REVISION}" \
 		${SYSTEMD_CONFIGURE_OPTS} \
 		${EXTRA_CONFIGURE_OPTS}
 
-override_dh_installman:
-	echo "1"
-
-
-# Building is fine, but the manpages need some sed work, to replace
-# /opt/syslog-ng with something sensible. And unfortunately,
-# rabbitmq-c is a bit broken, so we need to create a directory for it
-# too.
-override_dh_auto_build:
-	install -d debian/build-tree/modules/afamqp/rabbitmq-c/librabbitmq
-	dh_auto_build -- V=1
-	-for f in debian/build-tree/doc/man/*; do \
-		sed -e "s#/opt/syslog\\\-ng/etc#/etc/syslog-ng#g" \
-		    -e "s#/opt/syslog\\\-ng##g" \
-		    -e "/affile/{s#,#, #g}" \
-		    -e 's#^/$$##' <$$f >$$f.new && \
-		rm $$f && mv $$f.new $$f; \
-	done
-
 # The pkg-config .pc file is installed into ${libdir}/pkgconfig, but
 # we override libdir above to place everything useful there. We want
 # the .pc file elsewhere, though, so do that here at install time.
+#
+# Similarly, we want to install python modules to their proper place,
+# and this is a great time to tell the build system where that is.
+# Also removing .la files, these files don't needed and just confuse
+# the list-missing option
 override_dh_auto_install:
-	dh_auto_install -- pkgconfigdir=/usr/lib/pkgconfig
+	dh_auto_install -- pkgconfigdir=/usr/lib/pkgconfig \
+			   PYSETUP_OPTIONS="--install-layout=deb --root=$(CURDIR)/debian/tmp/"
+	find . -name \*.la | xargs --no-run-if-empty rm
 
 # To get better test results, and actually see failing tests, we need
 # to pass VERBOSE=1 to make when running the tests. Do that here.
@@ -134,41 +134,6 @@ override_dh_auto_test:
 #
 # Below are overrides for individual debhelper commands.
 ##
-
-# On kFreeBSD, d_console_all should log to /dev/ttyva, everywhere
-# else, to tty10. To keep the config as simple as possible, this is
-# accomplished by pulling the target device out of syslog-ng.conf,
-# into `scl-root`/system/tty10.conf.
-#
-# On kFreeBSD, this defines the `tty10` variable to /dev/ttyva,
-# everywhere else to /dev/tty10.
-#
-# It will be installed into the syslog-ng-core package by the
-# override_dh_install target.
-ifeq (${DEB_HOST_ARCH_OS},kfreebsd)
-TTY10_CONF = tty10.kfreebsd.conf
-else
-TTY10_CONF = tty10.linux.conf
-endif
-
-# Upstream installs the merge-grammar.pl as data, thus not
-# executable. Yet, it needs to be, since the Makefiles that upstream
-# also installs expect it so.
-#
-# So we simply flip a few bits after dh_install, and we're good to go!
-#
-# We also want to install the tty10.conf file into syslog-ng-core.
-# Since that depends on the architecture, we're installing it from
-# here.
-override_dh_install:
-	dh_install
-ifneq (,$(filter syslog-ng-dev,$(shell dh_listpackages)))
-	chmod +x debian/syslog-ng-dev/usr/share/syslog-ng/tools/merge-grammar.pl
-endif
-ifneq (,$(filter syslog-ng-core,$(shell dh_listpackages)))
-	install -m 0644 debian/${TTY10_CONF} \
-			debian/syslog-ng-core/usr/share/syslog-ng/include/scl/system/tty10.conf
-endif
 
 # Install the NEWS file as upstream changelog.
 # Rationale: the ChangeLog file is an old artifact from the Arch
@@ -218,6 +183,11 @@ override_dh_gencontrol:
 			 -Vsng:CoreModules=$(shell debian/tools/list-modules.sh core) \
 			 -Vsng:ABI=${ABI_VERSION}
 
+# Sadly, dh_python2 barfs on --dbg-package=, so we work it around by
+# clearing DH_OPTIONS here.
+override_dh_python2:
+	DH_OPTIONS="" dh_python2
+
 ##
 #* Other, non-override targets
 ##
@@ -229,11 +199,6 @@ override_dh_gencontrol:
 # package has no build-dep-indeps, rightly so).
 build-indep: ;
 
-# Because debian/rules get-orig-source is easier to type than uscan,
-# and is less scary because of using no force...:
-get-orig-source:
-	uscan --force-download --verbose
-
 # And for the rest, there is debhelper!
 %:
-	dh $@ --with autoreconf,systemd --parallel
+	dh $@ --with autoreconf,systemd,python2 --parallel --list-missing
