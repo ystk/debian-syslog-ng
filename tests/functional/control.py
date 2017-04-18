@@ -1,3 +1,24 @@
+#############################################################################
+# Copyright (c) 2007-2016 Balabit
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as published
+# by the Free Software Foundation, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# As an additional exemption you are allowed to compile & link against the
+# OpenSSL libraries as published by the OpenSSL project. See the file
+# COPYING for details.
+#
+#############################################################################
 # syslog-ng process control
 
 import os, sys, signal, traceback, time, errno, re
@@ -31,9 +52,10 @@ def start_syslogng(conf, keep_persist=False, verbose=False):
     syslogng_pid = os.fork()
     if syslogng_pid == 0:
         os.putenv("RANDFILE", "rnd")
-        rc = os.execl('../../src/syslog-ng', '../../src/syslog-ng', '-f', 'test.conf', '--fd-limit', '1024', '-F', verbose_opt, '-p', 'syslog-ng.pid', '-R', 'syslog-ng.persist', '--no-caps', '--enable-core', '--seed')
+        module_path = get_module_path()
+        rc = os.execl(get_syslog_ng_binary(), get_syslog_ng_binary(), '-f', 'test.conf', '--fd-limit', '1024', '-F', verbose_opt, '-p', 'syslog-ng.pid', '-R', 'syslog-ng.persist', '--no-caps', '--enable-core', '--seed', '--module-path', module_path)
         sys.exit(rc)
-    time.sleep(3)
+    time.sleep(5)
     print_user("Syslog-ng started")
     return True
 
@@ -57,7 +79,7 @@ def stop_syslogng():
     print_user("syslog-ng stopped")
     if rc == 0:
         return True
-    print_user("syslog-ng exited with a non-zero value")
+    print_user("syslog-ng exited with a non-zero value (%d)" % rc)
     return False
 
 def flush_files(settle_time=3):

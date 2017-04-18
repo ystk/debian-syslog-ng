@@ -1,4 +1,25 @@
 #!/usr/bin/env python
+#############################################################################
+# Copyright (c) 2007-2015 Balabit
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as published
+# by the Free Software Foundation, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# As an additional exemption you are allowed to compile & link against the
+# OpenSSL libraries as published by the OpenSSL project. See the file
+# COPYING for details.
+#
+#############################################################################
 
 import os, errno
 
@@ -63,8 +84,9 @@ import test_filters
 import test_input_drivers
 import test_performance
 import test_sql
+import test_python
 
-tests = (test_input_drivers, test_sql, test_file_source, test_filters, test_performance)
+tests = (test_input_drivers, test_sql, test_file_source, test_filters, test_performance, test_python)
 
 init_env()
 seed_rnd()
@@ -77,6 +99,10 @@ if len(sys.argv) > 1:
     verbose = True
 try:
     for test_module in tests:
+        if hasattr(test_module, "check_env") and not test_module.check_env():
+            continue
+
+
         contents = dir(test_module)
         contents.sort()
         for obj in contents:
@@ -85,6 +111,7 @@ try:
             test_case = getattr(test_module, obj)
             test_name = test_module.__name__ + '.' + obj
             print_start(test_name)
+
 
             if not start_syslogng(test_module.config, verbose):
                 sys.exit(1)
