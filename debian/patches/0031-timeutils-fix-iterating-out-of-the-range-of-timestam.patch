@@ -1,0 +1,23 @@
+From: László Várady <laszlo.varady@protonmail.com>
+Date: Sat, 20 Aug 2022 12:42:38 +0200
+Subject: timeutils: fix iterating out of the range of timestamp buffer
+
+Signed-off-by: László Várady <laszlo.varady@protonmail.com>
+Signed-off-by: Balazs Scheidler <bazsi77@gmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/73b5c300b8fde5e7a4824baa83a04931279abb37
+Bug-Debian: https://security-tracker.debian.org/tracker/CVE-2022-38725
+---
+ modules/syslogformat/syslog-format.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -280,7 +280,7 @@
+               div = div * 10;
+               _process_any_char(self, &src, &left);
+             }
+-          while (isdigit(*src))
++          while (left > 0 && isdigit(*src))
+             {
+               _process_any_char(self, &src, &left);
+             }

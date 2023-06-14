@@ -1,0 +1,32 @@
+From: Kokan <kokaipeter@gmail.com>
+Date: Fri, 24 Jul 2020 11:03:19 +0200
+Subject: syslogformat: sd_step skip if no char left
+
+Fixes #3328 and hopefully a few similuar not discovered crashes like that.
+
+Signed-off-by: Kokan <kokaipeter@gmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/0ce839090986670290461c52d3a70046659e8654
+---
+ modules/syslogformat/syslog-format.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -48,11 +48,16 @@
+ static NVHandle is_synced;
+ static NVHandle cisco_seqid;
+ 
+-static inline void
++static inline gboolean
+ sd_step_and_store(LogMessage *self, const guchar **data, gint *left)
+ {
++  if (*left < 1)
++    return FALSE;
++
+   (*data)++;
+   (*left)--;
++
++  return TRUE;
+ }
+ 
+ static gboolean

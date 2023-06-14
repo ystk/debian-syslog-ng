@@ -1,0 +1,3 @@
+compile
+test-driver
+modules/afamqp/rabbitmq-c/codegen/amqp_codegen.pyc

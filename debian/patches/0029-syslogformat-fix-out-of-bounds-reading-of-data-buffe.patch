@@ -1,0 +1,51 @@
+From: László Várady <laszlo.varady@protonmail.com>
+Date: Sat, 20 Aug 2022 12:26:05 +0200
+Subject: syslogformat: fix out-of-bounds reading of data buffer
+
+Signed-off-by: László Várady <laszlo.varady@protonmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/b5a060f2ebb8d794f508436a12e4d4163f94b1b8
+Bug-Debian: https://security-tracker.debian.org/tracker/CVE-2022-38725
+---
+ modules/syslogformat/syslog-format.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -229,6 +229,9 @@
+ 
+   cached_g_current_time(&now);
+ 
++  if (!left)
++    goto error;
++
+   if ((parse_flags & LP_SYSLOG_PROTOCOL) == 0)
+     {
+       /* Cisco timestamp extensions, the first '*' indicates that the clock is
+@@ -661,7 +664,7 @@
+       open_sd++;
+       do
+         {
+-          if (!isascii(*src) || *src == '=' || *src == ' ' || *src == ']' || *src == '"')
++          if (!left || !isascii(*src) || *src == '=' || *src == ' ' || *src == ']' || *src == '"')
+             goto error;
+           /* read sd_id */
+           pos = 0;
+@@ -695,7 +698,8 @@
+           strcpy(sd_value_name, logmsg_sd_prefix);
+           /* this strcat is safe, as sd_id_name is at most 32 chars */
+           strncpy(sd_value_name + logmsg_sd_prefix_len, sd_id_name, sizeof(sd_value_name) - logmsg_sd_prefix_len);
+-          if (*src == ']')
++
++          if (left && *src == ']')
+             {
+               /* Standalone sdata */
+               handle = log_msg_get_value_handle(sd_value_name);
+@@ -715,7 +719,7 @@
+               else
+                 goto error;
+ 
+-              if (!isascii(*src) || *src == '=' || *src == ' ' || *src == ']' || *src == '"')
++              if (!left || !isascii(*src) || *src == '=' || *src == ' ' || *src == ']' || *src == '"')
+                 goto error;
+ 
+               /* read sd-param */

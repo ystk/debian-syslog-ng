@@ -1,0 +1,216 @@
+From: Kokan <kokaipeter@gmail.com>
+Date: Fri, 24 Jul 2020 10:44:22 +0200
+Subject: syslogformat: utilize sd_step
+
+Signed-off-by: Kokan <kokaipeter@gmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/9ec67869fd9b784f56804f175ef8eda68662cd0d
+---
+ modules/syslogformat/syslog-format.c | 54 ++++++++++++------------------------
+ 1 file changed, 18 insertions(+), 36 deletions(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -65,8 +65,7 @@
+ 
+   if (left && src[0] == '<')
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+       pri = 0;
+       while (left && *src != '>')
+         {
+@@ -78,14 +77,12 @@
+ 	    {
+ 	      return FALSE;
+ 	    }
+-	  src++;
+-	  left--;
++	  sd_step_and_store(self, &src, &left);
+ 	}
+       self->pri = pri;
+       if (left)
+         {
+-          src++;
+-          left--;
++          sd_step_and_store(self, &src, &left);
+         }
+     }
+   /* No priority info in the buffer? Just assign a default. */
+@@ -108,8 +105,7 @@
+ 
+   while (max_len && left && strchr(chars, *src))
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+       num_skipped++;
+       if (max_len >= 0)
+         max_len--;
+@@ -127,8 +123,7 @@
+ 
+   if (left > 0 && *src == ' ')
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   else
+     {
+@@ -149,8 +144,7 @@
+ 
+   while (left && strchr(delims, *src) == 0)
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+       num_skipped++;
+     }
+   *data = src;
+@@ -200,11 +194,9 @@
+     {
+       if (!isdigit(*src))
+           return FALSE;
+-      src++;
+-      left--;
++        sd_step_and_store(self, &src, &left);
+     }
+-  src++;
+-  left--;
++  sd_step_and_store(self, &src, &left);
+ 
+   /* if the next char is not space, then we may try to read a date */
+ 
+@@ -237,14 +229,12 @@
+       if (G_UNLIKELY(src[0] == '*'))
+         {
+           log_msg_set_value(self, is_synced, "0", 1);
+-          src++;
+-          left--;
++          sd_step_and_store(self, &src, &left);
+         }
+       else if (G_UNLIKELY(src[0] == '.'))
+         {
+           log_msg_set_value(self, is_synced, "1", 1);
+-          src++;
+-          left--;
++          sd_step_and_store(self, &src, &left);
+         }
+     }
+   /* If the next chars look like a date, then read them as a date. */
+@@ -273,19 +263,16 @@
+           gint div = 1;
+           /* process second fractions */
+ 
+-          src++;
+-          left--;
++          sd_step_and_store(self, &src, &left);
+           while (left > 0 && div < 10e5 && isdigit(*src))
+             {
+               frac = 10 * frac + (*src) - '0';
+               div = div * 10;
+-              src++;
+-              left--;
++              sd_step_and_store(self, &src, &left);
+             }
+           while (isdigit(*src))
+             {
+-              src++;
+-              left--;
++              sd_step_and_store(self, &src, &left);
+             }
+           self->timestamps[LM_TS_STAMP].tv_usec = frac * (1000000 / div);
+         }
+@@ -294,8 +281,7 @@
+         {
+           /* Z is special, it means UTC */
+           self->timestamps[LM_TS_STAMP].zone_offset = 0;
+-          src++;
+-          left--;
++          sd_step_and_store(self, &src, &left);
+         }
+       else if (left >= 5 && (*src == '+' || *src == '-') &&
+           isdigit(*(src+1)) && isdigit(*(src+2)) && *(src+3) == ':' && isdigit(*(src+4)) && isdigit(*(src+5)) && !isdigit(*(src+6)))
+@@ -329,8 +315,7 @@
+ 
+           if (*src == ':')
+             {
+-              src++;
+-              left--;
++              sd_step_and_store(self, &src, &left);
+             }
+ 
+           tm.tm_isdst = -1;
+@@ -474,8 +459,7 @@
+         {
+           return FALSE;
+         }
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   if (version != 1)
+     return FALSE;
+@@ -497,8 +481,7 @@
+   prog_start = src;
+   while (left && *src != ' ' && *src != '[' && *src != ':')
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   log_msg_set_value(self, LM_V_PROGRAM, (gchar *) prog_start, src - prog_start);
+   if (left > 0 && *src == '[')
+@@ -506,8 +489,7 @@
+       const guchar *pid_start = src + 1;
+       while (left && *src != ' ' && *src != ']' && *src != ':')
+         {
+-          src++;
+-          left--;
++             sd_step_and_store(self, &src, &left);
+         }
+       if (left)
+         {
+@@ -515,19 +497,16 @@
+         }
+       if (left > 0 && *src == ']')
+         {
+-          src++;
+-          left--;
++          ssd_step_and_store(self, &src, &left);;
+         }
+     }
+   if (left > 0 && *src == ':')
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   if (left > 0 && *src == ' ')
+     {
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   if ((flags & LP_STORE_LEGACY_MSGHDR))
+     {
+@@ -587,8 +566,7 @@
+           break;
+         }
+       hostname_buf[dst++] = *src;
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   hostname_buf[dst] = 0;
+ 
+@@ -668,8 +646,7 @@
+   if (left && src[0] == '-')
+     {
+       /* Nothing to do here */
+-      src++;
+-      left--;
++      sd_step_and_store(self, &src, &left);
+     }
+   else if (left && src[0] == '[')
+     {

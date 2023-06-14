@@ -1,0 +1,24 @@
+From: László Várady <laszlo.varady@protonmail.com>
+Date: Sat, 20 Aug 2022 14:30:22 +0200
+Subject: timeutils: fix invalid calculation of ISO timestamp length
+
+Signed-off-by: László Várady <laszlo.varady@protonmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/8c6e2c1c41b0fcc5fbd464c35f4dac7102235396
+Bug-Debian: https://security-tracker.debian.org/tracker/CVE-2022-38725
+---
+ modules/syslogformat/syslog-format.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -293,8 +293,8 @@
+           self->timestamps[LM_TS_STAMP].zone_offset = 0;
+           _process_any_char(self, &src, &left);
+         }
+-      else if (left >= 5 && (*src == '+' || *src == '-') &&
+-          isdigit(*(src+1)) && isdigit(*(src+2)) && *(src+3) == ':' && isdigit(*(src+4)) && isdigit(*(src+5)) && !isdigit(*(src+6)))
++      else if (left >= 6 && (*src == '+' || *src == '-') &&
++          isdigit(*(src+1)) && isdigit(*(src+2)) && *(src+3) == ':' && isdigit(*(src+4)) && isdigit(*(src+5)) && (left < 7 || !isdigit(*(src+6))))
+         {
+           /* timezone offset */
+           gint sign = *src == '-' ? -1 : 1;

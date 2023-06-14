@@ -1,0 +1,284 @@
+From: Kokan <kokaipeter@gmail.com>
+Date: Fri, 24 Jul 2020 11:11:19 +0200
+Subject: syslogformat: sd_step -> _process_any_char
+
+Signed-off-by: Kokan <kokaipeter@gmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/4117b4b7eaaed215295e0e3bff6e8f6dc9c1842b
+---
+ modules/syslogformat/syslog-format.c | 60 ++++++++++++++++++------------------
+ 1 file changed, 30 insertions(+), 30 deletions(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -49,7 +49,7 @@
+ static NVHandle cisco_seqid;
+ 
+ static inline gboolean
+-sd_step_and_store(LogMessage *self, const guchar **data, gint *left)
++_process_any_char(LogMessage *self, const guchar **data, gint *left)
+ {
+   if (*left < 1)
+     return FALSE;
+@@ -70,7 +70,7 @@
+ 
+   if (left && src[0] == '<')
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+       pri = 0;
+       while (left && *src != '>')
+         {
+@@ -82,12 +82,12 @@
+ 	    {
+ 	      return FALSE;
+ 	    }
+-	  sd_step_and_store(self, &src, &left);
++	  _process_any_char(self, &src, &left);
+ 	}
+       self->pri = pri;
+       if (left)
+         {
+-          sd_step_and_store(self, &src, &left);
++          _process_any_char(self, &src, &left);
+         }
+     }
+   /* No priority info in the buffer? Just assign a default. */
+@@ -110,7 +110,7 @@
+ 
+   while (max_len && left && strchr(chars, *src))
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+       num_skipped++;
+       if (max_len >= 0)
+         max_len--;
+@@ -128,7 +128,7 @@
+ 
+   if (left > 0 && *src == ' ')
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   else
+     {
+@@ -149,7 +149,7 @@
+ 
+   while (left && strchr(delims, *src) == 0)
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+       num_skipped++;
+     }
+   *data = src;
+@@ -199,9 +199,9 @@
+     {
+       if (!isdigit(*src))
+           return FALSE;
+-        sd_step_and_store(self, &src, &left);
++        _process_any_char(self, &src, &left);
+     }
+-  sd_step_and_store(self, &src, &left);
++  _process_any_char(self, &src, &left);
+ 
+   /* if the next char is not space, then we may try to read a date */
+ 
+@@ -234,12 +234,12 @@
+       if (G_UNLIKELY(src[0] == '*'))
+         {
+           log_msg_set_value(self, is_synced, "0", 1);
+-          sd_step_and_store(self, &src, &left);
++          _process_any_char(self, &src, &left);
+         }
+       else if (G_UNLIKELY(src[0] == '.'))
+         {
+           log_msg_set_value(self, is_synced, "1", 1);
+-          sd_step_and_store(self, &src, &left);
++          _process_any_char(self, &src, &left);
+         }
+     }
+   /* If the next chars look like a date, then read them as a date. */
+@@ -268,16 +268,16 @@
+           gint div = 1;
+           /* process second fractions */
+ 
+-          sd_step_and_store(self, &src, &left);
++          _process_any_char(self, &src, &left);
+           while (left > 0 && div < 10e5 && isdigit(*src))
+             {
+               frac = 10 * frac + (*src) - '0';
+               div = div * 10;
+-              sd_step_and_store(self, &src, &left);
++              _process_any_char(self, &src, &left);
+             }
+           while (isdigit(*src))
+             {
+-              sd_step_and_store(self, &src, &left);
++              _process_any_char(self, &src, &left);
+             }
+           self->timestamps[LM_TS_STAMP].tv_usec = frac * (1000000 / div);
+         }
+@@ -286,7 +286,7 @@
+         {
+           /* Z is special, it means UTC */
+           self->timestamps[LM_TS_STAMP].zone_offset = 0;
+-          sd_step_and_store(self, &src, &left);
++          _process_any_char(self, &src, &left);
+         }
+       else if (left >= 5 && (*src == '+' || *src == '-') &&
+           isdigit(*(src+1)) && isdigit(*(src+2)) && *(src+3) == ':' && isdigit(*(src+4)) && isdigit(*(src+5)) && !isdigit(*(src+6)))
+@@ -320,7 +320,7 @@
+ 
+           if (*src == ':')
+             {
+-              sd_step_and_store(self, &src, &left);
++              _process_any_char(self, &src, &left);
+             }
+ 
+           tm.tm_isdst = -1;
+@@ -464,7 +464,7 @@
+         {
+           return FALSE;
+         }
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   if (version != 1)
+     return FALSE;
+@@ -486,7 +486,7 @@
+   prog_start = src;
+   while (left && *src != ' ' && *src != '[' && *src != ':')
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   log_msg_set_value(self, LM_V_PROGRAM, (gchar *) prog_start, src - prog_start);
+   if (left > 0 && *src == '[')
+@@ -494,7 +494,7 @@
+       const guchar *pid_start = src + 1;
+       while (left && *src != ' ' && *src != ']' && *src != ':')
+         {
+-             sd_step_and_store(self, &src, &left);
++             _process_any_char(self, &src, &left);
+         }
+       if (left)
+         {
+@@ -502,16 +502,16 @@
+         }
+       if (left > 0 && *src == ']')
+         {
+-          ssd_step_and_store(self, &src, &left);;
++          _process_any_char(self, &src, &left);;
+         }
+     }
+   if (left > 0 && *src == ':')
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   if (left > 0 && *src == ' ')
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   if ((flags & LP_STORE_LEGACY_MSGHDR))
+     {
+@@ -571,7 +571,7 @@
+           break;
+         }
+       hostname_buf[dst++] = *src;
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   hostname_buf[dst] = 0;
+ 
+@@ -651,11 +651,11 @@
+   if (left && src[0] == '-')
+     {
+       /* Nothing to do here */
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+     }
+   else if (left && src[0] == '[')
+     {
+-      sd_step_and_store(self, &src, &left);
++      _process_any_char(self, &src, &left);
+       open_sd++;
+       do
+         {
+@@ -682,7 +682,7 @@
+                 {
+                   goto error;
+                 }
+-              sd_step_and_store(self, &src, &left);
++              _process_any_char(self, &src, &left);
+             }
+ 
+           if (pos == 0)
+@@ -709,7 +709,7 @@
+           while (left && *src != ']')
+             {
+               if (left && *src == ' ') /* skip the ' ' before the parameter name */
+-                sd_step_and_store(self, &src, &left);
++                _process_any_char(self, &src, &left);
+               else
+                 goto error;
+ 
+@@ -734,13 +734,13 @@
+                     {
+                       goto error;
+                     }
+-                  sd_step_and_store(self, &src, &left);
++                  _process_any_char(self, &src, &left);
+                 }
+               sd_param_name[pos] = 0;
+               strncpy(&sd_value_name[logmsg_sd_prefix_len + 1 + sd_id_len], sd_param_name, sizeof(sd_value_name) - logmsg_sd_prefix_len - 1 - sd_id_len);
+ 
+               if (left && *src == '=')
+-                sd_step_and_store(self, &src, &left);
++                _process_any_char(self, &src, &left);
+               else
+                 goto error;
+ 
+@@ -750,7 +750,7 @@
+                 {
+                   gboolean quote = FALSE;
+                   /* opening quote */
+-                  sd_step_and_store(self, &src, &left);
++                  _process_any_char(self, &src, &left);
+                   pos = 0;
+ 
+                   while (left && (*src != '"' || quote))
+@@ -777,13 +777,13 @@
+                            }
+                          quote = FALSE;
+                        }
+-                      sd_step_and_store(self, &src, &left);
++                      _process_any_char(self, &src, &left);
+                     }
+                   sd_param_value[pos] = 0;
+                   sd_param_value_len = pos;
+ 
+                   if (left && *src == '"')/* closing quote */
+-                    sd_step_and_store(self, &src, &left);
++                    _process_any_char(self, &src, &left);
+                   else
+                     goto error;
+                 }
+@@ -799,7 +799,7 @@
+ 
+           if (left && *src == ']')
+             {
+-              sd_step_and_store(self, &src, &left);
++              _process_any_char(self, &src, &left);
+               open_sd--;
+             }
+           else
+@@ -811,7 +811,7 @@
+           if (left && *src == '[')
+             {
+               /* new structured data begins, thus continue iteration */
+-              sd_step_and_store(self, &src, &left);
++              _process_any_char(self, &src, &left);
+               open_sd++;
+             }
+         }

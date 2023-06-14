@@ -1,0 +1,142 @@
+From: László Várady <laszlo.varady@protonmail.com>
+Date: Sat, 20 Aug 2022 14:29:43 +0200
+Subject: timeutils: name repeating constant
+
+Signed-off-by: László Várady <laszlo.varady@protonmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/09f489c89c826293ff8cbd282cfc866ab56054c4
+Bug-Debian: https://security-tracker.debian.org/tracker/CVE-2022-38725
+---
+ lib/str-format.c | 54 +++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 29 insertions(+), 25 deletions(-)
+
+--- a/lib/str-format.c
++++ b/lib/str-format.c
+@@ -274,41 +274,43 @@
+ {
+   *wday = -1;
+ 
+-  if (*left < 3)
++  const gsize abbrev_length = 3;
++
++  if (*left < abbrev_length)
+     return FALSE;
+ 
+   switch (**buf)
+     {
+     case 'S':
+-      if (memcmp(*buf, "Sun", 3) == 0)
++      if (memcmp(*buf, "Sun", abbrev_length) == 0)
+         *wday = 0;
+-      else if (memcmp(*buf, "Sat", 3) == 0)
++      else if (memcmp(*buf, "Sat", abbrev_length) == 0)
+         *wday = 6;
+       break;
+     case 'M':
+-      if (memcmp(*buf, "Mon", 3) == 0)
++      if (memcmp(*buf, "Mon", abbrev_length) == 0)
+         *wday = 1;
+       break;
+     case 'T':
+-      if (memcmp(*buf, "Tue", 3) == 0)
++      if (memcmp(*buf, "Tue", abbrev_length) == 0)
+         *wday = 2;
+-      else if (memcmp(*buf, "Thu", 3) == 0)
++      else if (memcmp(*buf, "Thu", abbrev_length) == 0)
+         *wday = 4;
+       break;
+     case 'W':
+-      if (memcmp(*buf, "Wed", 3) == 0)
++      if (memcmp(*buf, "Wed", abbrev_length) == 0)
+         *wday = 3;
+       break;
+     case 'F':
+-      if (memcmp(*buf, "Fri", 3) == 0)
++      if (memcmp(*buf, "Fri", abbrev_length) == 0)
+         *wday = 5;
+       break;
+     default:
+       return FALSE;
+     }
+ 
+-  (*buf) += 3;
+-  (*left) -= 3;
++  (*buf) += abbrev_length;
++  (*left) -= abbrev_length;
+   return TRUE;
+ }
+ 
+@@ -317,57 +319,59 @@
+ {
+   *mon = -1;
+ 
+-  if (*left < 3)
++  const gsize abbrev_length = 3;
++
++  if (*left < abbrev_length)
+     return FALSE;
+ 
+   switch (**buf)
+     {
+     case 'J':
+-      if (memcmp(*buf, "Jan", 3) == 0)
++      if (memcmp(*buf, "Jan", abbrev_length) == 0)
+         *mon = 0;
+-      else if (memcmp(*buf, "Jun", 3) == 0)
++      else if (memcmp(*buf, "Jun", abbrev_length) == 0)
+         *mon = 5;
+-      else if (memcmp(*buf, "Jul", 3) == 0)
++      else if (memcmp(*buf, "Jul", abbrev_length) == 0)
+         *mon = 6;
+       break;
+     case 'F':
+-      if (memcmp(*buf, "Feb", 3) == 0)
++      if (memcmp(*buf, "Feb", abbrev_length) == 0)
+         *mon = 1;
+       break;
+     case 'M':
+-      if (memcmp(*buf, "Mar", 3) == 0)
++      if (memcmp(*buf, "Mar", abbrev_length) == 0)
+         *mon = 2;
+-      else if (memcmp(*buf, "May", 3) == 0)
++      else if (memcmp(*buf, "May", abbrev_length) == 0)
+         *mon = 4;
+       break;
+     case 'A':
+-      if (memcmp(*buf, "Apr", 3) == 0)
++      if (memcmp(*buf, "Apr", abbrev_length) == 0)
+         *mon = 3;
+-      else if (memcmp(*buf, "Aug", 3) == 0)
++      else if (memcmp(*buf, "Aug", abbrev_length) == 0)
+         *mon = 7;
+       break;
+     case 'S':
+-      if (memcmp(*buf, "Sep", 3) == 0)
++      if (memcmp(*buf, "Sep", abbrev_length) == 0)
+         *mon = 8;
+       break;
+     case 'O':
+-      if (memcmp(*buf, "Oct", 3) == 0)
++      if (memcmp(*buf, "Oct", abbrev_length) == 0)
+         *mon = 9;
+       break;
+     case 'N':
+-      if (memcmp(*buf, "Nov",3 ) == 0)
++      if (memcmp(*buf, "Nov",abbrev_length ) == 0)
+         *mon = 10;
+       break;
+     case 'D':
+-      if (memcmp(*buf, "Dec", 3) == 0)
++      if (memcmp(*buf, "Dec", abbrev_length) == 0)
+         *mon = 11;
+       break;
+     default:
+       return FALSE;
+     }
+ 
+-  (*buf) += 3;
+-  (*left) -= 3;
++  (*buf) += abbrev_length;
++  (*left) -= abbrev_length;
+   return TRUE;
+ }
+ 

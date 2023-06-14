@@ -1,0 +1,22 @@
+From: László Várady <laszlo.varady@protonmail.com>
+Date: Sat, 20 Aug 2022 14:30:51 +0200
+Subject: timeutils: fix out-of-bounds reading of data buffer
+
+Signed-off-by: László Várady <laszlo.varady@protonmail.com>
+Origin: https://github.com/syslog-ng/syslog-ng/commit/56f881c5eaa3d8c02c96607c4b9e4eaf959a044d
+Bug-Debian: https://security-tracker.debian.org/tracker/CVE-2022-38725
+---
+ modules/syslogformat/syslog-format.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/modules/syslogformat/syslog-format.c
++++ b/modules/syslogformat/syslog-format.c
+@@ -323,7 +323,7 @@
+           if (!scan_pix_timestamp((const gchar **) &src, &left, &tm))
+             goto error;
+ 
+-          if (*src == ':')
++          if (left && *src == ':')
+             {
+               _process_any_char(self, &src, &left);
+             }
